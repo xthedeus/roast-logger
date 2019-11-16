@@ -2,6 +2,7 @@ from flask import Flask
 from flask import request
 from flask import Response
 from flask import json
+from flask_cors import CORS
 
 import threading
 import sys
@@ -11,6 +12,8 @@ from datetime import datetime
 from tinydb import TinyDB, Query, where
 
 app = Flask(__name__)
+CORS(app)
+
 TinyDB.DEFAULT_TABLE_KWARGS = {'cache_size': 0}
 db = TinyDB('db.json')
 
@@ -56,7 +59,7 @@ def data_gather(log_id):
         time.sleep(5)
 
 
-@app.route('/log', methods=['POST'])
+@app.route('/logs', methods=['POST'])
 def log():
     if request.method == 'POST':
         global log_count
@@ -71,7 +74,7 @@ def log():
         return resp
 
 
-@app.route('/log/<id>', methods=['GET', 'POST'])
+@app.route('/logs/<id>', methods=['GET', 'POST'])
 def log_id(id):
     if request.method == 'GET':
         data = db.search(where('id') == int(id))
