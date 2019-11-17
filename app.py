@@ -8,7 +8,6 @@ import threading
 import sys
 import trace
 import time
-from datetime import datetime
 from tinydb import TinyDB, Query, where
 
 app = Flask(__name__)
@@ -52,8 +51,8 @@ class thread_with_trace(threading.Thread):
 def data_gather(log_id):
     timestep = 0
     while True:
-        now = datetime.now()
-        db.insert({'id': log_id, 'time': now.isoformat(), 'et': (
+        now = int(time.time())
+        db.insert({'id': log_id, 'time': now, 'et': (
             timestep+10)*2, 'bt': (timestep+25)*2})
         timestep = timestep + 5
         time.sleep(5)
@@ -68,7 +67,7 @@ def log():
         x = thread_with_trace(target=data_gather, args=(log_count,))
         logging_entries.append({'log_id': log_count, 'thread': x})
         x.start()
-        data = {'message': 'logging started, id: %d' % (log_count)}
+        data = {'id': log_count}
         js = json.dumps(data)
         resp = Response(js, status=200, mimetype='application/json')
         return resp

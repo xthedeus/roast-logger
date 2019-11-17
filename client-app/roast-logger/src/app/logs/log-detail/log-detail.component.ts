@@ -52,9 +52,17 @@ export class LogDetailComponent implements OnInit {
     );
   }
 
+  stopLog(): void {
+    this.isLoading = true;
+    this.logService.stopLog(this.logId).pipe(finalize(() => this.isLoading = false)).subscribe(
+      data => console.log(data),
+      error => console.error(error)
+    );
+  }
+
   reloadGraph(data): void {
-    this.logChartOptions.series[0].data = data.map(l => [new Date(l.time).getTime(), l.bt]);
-    this.logChartOptions.series[1].data = data.map(l => [new Date(l.time).getTime(), l.et]);
+    this.logChartOptions.series[0].data = data.map(l => [new Date(l.time * 1000).getTime(), l.bt]);
+    this.logChartOptions.series[1].data = data.map(l => [new Date(l.time * 1000).getTime(), l.et]);
 
     this.updateFlag = true;
   }
@@ -85,7 +93,7 @@ export class LogDetailComponent implements OnInit {
       }, {
         type: 'line',
         name: "ET",
-        color: "#9C27B0",
+        color: "#2196F3",
         data: []
       }]
 
