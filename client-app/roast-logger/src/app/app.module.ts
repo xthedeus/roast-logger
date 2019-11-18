@@ -8,6 +8,7 @@ import { LogsComponent } from './logs/logs.component';
 import { LogDetailComponent } from './logs/log-detail/log-detail.component';
 import { HttpClientModule } from '@angular/common/http';
 import { HighchartsChartModule } from 'highcharts-angular';
+import { MDBBootstrapModule } from 'angular-bootstrap-md';
 
 @NgModule({
   declarations: [
@@ -20,7 +21,8 @@ import { HighchartsChartModule } from 'highcharts-angular';
     BrowserModule,
     AppRoutingModule,
     HttpClientModule,
-    HighchartsChartModule
+    HighchartsChartModule,
+    MDBBootstrapModule.forRoot()
   ],
   providers: [],
   bootstrap: [AppComponent]

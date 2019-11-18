@@ -104,4 +104,4 @@ venv.bak/
 .mypy_cache/
 
 # database files
-*.json
+db.json

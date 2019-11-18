@@ -21,6 +21,7 @@ export class LogDetailComponent implements OnInit {
   updateFlag: boolean;
 
   intervalId: any;
+  shouldStopLogging: boolean;
 
   constructor(private route: ActivatedRoute, private logService: LogService) {
     this.logChartOptions = this.getBaseChart();
@@ -32,6 +33,13 @@ export class LogDetailComponent implements OnInit {
 
   ngOnInit() {
     this.intervalId = setInterval(() => {
+      if (this.shouldStopLogging) {
+        this.shouldStopLogging = false;
+        clearInterval(this.intervalId);
+        setTimeout(() => {
+          this.getLog();
+        }, 5000);
+      }
       this.getLog();
     }, 5000);
   }
@@ -55,7 +63,10 @@ export class LogDetailComponent implements OnInit {
   stopLog(): void {
     this.isLoading = true;
     this.logService.stopLog(this.logId).pipe(finalize(() => this.isLoading = false)).subscribe(
-      data => console.log(data),
+      data => {
+        console.log(data);
+        this.shouldStopLogging = true;
+      },
       error => console.error(error)
     );
   }
