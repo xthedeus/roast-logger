@@ -11,6 +11,10 @@ import { finalize } from 'rxjs/operators';
 export class OverviewComponent implements OnInit {
 
   isLoading: boolean;
+  serverUrl: string;
+  baseUrl: string;
+  isUrlSaved: boolean;
+  loggingId: number;
 
   constructor(private router: Router, private logService: LogService) { }
 
@@ -19,12 +23,37 @@ export class OverviewComponent implements OnInit {
 
   startLog(): void {
     this.isLoading = true;
-    this.logService.startLog().pipe(finalize(() => this.isLoading = false)).subscribe(
+    this.logService.startLog(this.baseUrl).pipe(finalize(() => this.isLoading = false)).subscribe(
       data => {
-        this.router.navigate(['logs', data.id]);
+        //this.router.navigate(['logs', data.id]);
+        this.loggingId = data.id;
       },
       error => console.error(error)
     );
+  }
+
+  getServerStatus(): void {
+    this.isLoading = true;
+    let url = this.serverUrl;
+    if (url.substring(url.length - 1) == "/") {
+      url = url.substring(0, url.length - 1);
+    }
+
+    var charCode = url.charCodeAt(0);
+    if (charCode >= 48 && charCode <= 57) {
+      url = `http://${url}`;
+    }
+
+    this.baseUrl = url;
+
+    this.logService.getStatus(url)
+      .pipe(finalize(() => this.isLoading = false))
+      .subscribe(
+        data => {
+          this.isUrlSaved = true;
+        },
+        error => console.log(error)
+      );
   }
 
 }

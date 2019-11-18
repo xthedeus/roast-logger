@@ -13,8 +13,8 @@ export class LogService {
 
   constructor(private http: HttpClient) { }
 
-  getLog(id: number): Observable<any> {
-    const url = `${this.apiUrl}logs/${id}`;
+  getLog(baseUrl: string, id: number): Observable<any> {
+    const url = `${baseUrl}/logs/${id}`;
     return this.http.get<any>(url).pipe(
       tap((data: any) => {
         console.log('getLog: ', data);
@@ -23,8 +23,8 @@ export class LogService {
     );
   }
 
-  startLog(): Observable<any> {
-    const url = `${this.apiUrl}logs`;
+  startLog(baseUrl: string): Observable<any> {
+    const url = `${baseUrl}/logs`;
     return this.http.post<any>(url, {}).pipe(
       tap((data: any) => {
         console.log('startLog: ', data);
@@ -33,9 +33,19 @@ export class LogService {
     );
   }
 
-  stopLog(id: number): Observable<any> {
-    const url = `${this.apiUrl}logs/${id}`;
+  stopLog(baseUrl: string, id: number): Observable<any> {
+    const url = `${baseUrl}/logs/${id}`;
     return this.http.post<any>(url, {}).pipe(
+      tap((data: any) => {
+        console.log('stopLog: ', data);
+      }),
+      catchError(this.handleError)
+    );
+  }
+
+  getStatus(baseUrl: string): Observable<any> {
+    const url = `${baseUrl}/status`;
+    return this.http.get<any>(url).pipe(
       tap((data: any) => {
         console.log('stopLog: ', data);
       }),

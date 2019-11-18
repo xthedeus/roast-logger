@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, Input } from '@angular/core';
 import { LogService } from '../log.service';
 import { ActivatedRoute } from '@angular/router';
 import { finalize } from 'rxjs/operators';
@@ -11,8 +11,14 @@ import * as Highcharts from 'highcharts';
 })
 export class LogDetailComponent implements OnInit {
 
+  @Input()
+  baseUrl: string;
+
+  @Input()
   logId: number;
   isLoading: boolean;
+
+  isLoggingStopped: boolean;
 
   Highcharts = Highcharts;
   chartConstructor = "chart";
@@ -23,21 +29,19 @@ export class LogDetailComponent implements OnInit {
   intervalId: any;
   shouldStopLogging: boolean;
 
-  constructor(private route: ActivatedRoute, private logService: LogService) {
-    this.logChartOptions = this.getBaseChart();
-    this.route.params.subscribe(params => {
-      this.logId = params['id'];
-      this.getLog();
-    });
-  }
+  constructor(private route: ActivatedRoute, private logService: LogService) { }
 
   ngOnInit() {
+    this.logChartOptions = this.getBaseChart();
+    this.getLog();
     this.intervalId = setInterval(() => {
       if (this.shouldStopLogging) {
         this.shouldStopLogging = false;
         clearInterval(this.intervalId);
+        this.intervalId = null;
         setTimeout(() => {
           this.getLog();
+          this.isLoggingStopped = true;
         }, 5000);
       }
       this.getLog();
@@ -52,7 +56,7 @@ export class LogDetailComponent implements OnInit {
 
   getLog(): void {
     this.isLoading = true;
-    this.logService.getLog(this.logId).pipe(finalize(() => this.isLoading = false)).subscribe(
+    this.logService.getLog(this.baseUrl, this.logId).pipe(finalize(() => this.isLoading = false)).subscribe(
       data => {
         this.reloadGraph(data);
       },
@@ -62,7 +66,7 @@ export class LogDetailComponent implements OnInit {
 
   stopLog(): void {
     this.isLoading = true;
-    this.logService.stopLog(this.logId).pipe(finalize(() => this.isLoading = false)).subscribe(
+    this.logService.stopLog(this.baseUrl, this.logId).pipe(finalize(() => this.isLoading = false)).subscribe(
       data => {
         console.log(data);
         this.shouldStopLogging = true;

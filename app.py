@@ -50,12 +50,21 @@ class thread_with_trace(threading.Thread):
 
 def data_gather(log_id):
     timestep = 0
-    while True:
+    # data_gather will run for 30 minutes max
+    while timestep <= 1800:
         now = int(time.time())
         db.insert({'id': log_id, 'time': now, 'et': (
             timestep+10)*2, 'bt': (timestep+25)*2})
         timestep = timestep + 5
         time.sleep(5)
+
+
+@app.route('/status', methods=['GET'])
+def status():
+    data = {'status': True}
+    js = json.dumps(data)
+    resp = Response(js, status=200, mimetype='application/json')
+    return resp
 
 
 @app.route('/logs', methods=['POST'])
@@ -100,4 +109,4 @@ if __name__ == '__main__':
     for log in logs:
         if log['id'] > log_count:
             log_count = log['id']
-    app.run()
+    app.run(host='0.0.0.0')
