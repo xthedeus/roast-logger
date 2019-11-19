@@ -1,4 +1,4 @@
-import { Component, OnInit, Input } from '@angular/core';
+import { Component, OnInit, Input, Output, EventEmitter, OnChanges, SimpleChanges, SimpleChange } from '@angular/core';
 import { LogService } from '../log.service';
 import { ActivatedRoute } from '@angular/router';
 import { finalize } from 'rxjs/operators';
@@ -16,9 +16,21 @@ export class LogDetailComponent implements OnInit {
 
   @Input()
   logId: number;
+
+  @Input()
+  pollingInterval: number;
+
   isLoading: boolean;
 
-  isLoggingStopped: boolean;
+  @Output() lastReading = new EventEmitter();
+  @Output() nextReadingTimer = new EventEmitter();
+
+  lastReadingTime: number = 0;
+
+  isLoggingStopped: boolean = false;
+  shouldStopLogging: boolean = false;
+
+  lastReadingObj: any = {};
 
   Highcharts = Highcharts;
   chartConstructor = "chart";
@@ -27,25 +39,37 @@ export class LogDetailComponent implements OnInit {
   updateFlag: boolean;
 
   intervalId: any;
-  shouldStopLogging: boolean;
+  timerId: any;
 
-  constructor(private route: ActivatedRoute, private logService: LogService) { }
+  startTime: number;
+
+  constructor(private logService: LogService) { }
 
   ngOnInit() {
+    this.startTime = new Date().getTime();
     this.logChartOptions = this.getBaseChart();
     this.getLog();
+
+    this.timerId = setInterval(() => {
+      let timeLeft = this.pollingInterval - (new Date().getTime() - this.lastReadingTime);
+      if (timeLeft < 100) this.nextReadingTimer.emit(this.pollingInterval)
+      else this.nextReadingTimer.emit(timeLeft)
+    }, 500);
+
     this.intervalId = setInterval(() => {
       if (this.shouldStopLogging) {
         this.shouldStopLogging = false;
         clearInterval(this.intervalId);
+        clearInterval(this.timerId);
+        this.timerId = null;
         this.intervalId = null;
         setTimeout(() => {
           this.getLog();
           this.isLoggingStopped = true;
-        }, 5000);
+        }, this.pollingInterval);
       }
       this.getLog();
-    }, 5000);
+    }, this.pollingInterval);
   }
 
   ngOnDestroy() {
@@ -54,11 +78,19 @@ export class LogDetailComponent implements OnInit {
     }
   }
 
+  getElapsedTime(): number {
+    return new Date().getTime() - this.startTime;
+  }
+
   getLog(): void {
     this.isLoading = true;
     this.logService.getLog(this.baseUrl, this.logId).pipe(finalize(() => this.isLoading = false)).subscribe(
       data => {
+        this.lastReadingTime = new Date().getTime();
         this.reloadGraph(data);
+        let lastReading = data[data.length - 1];
+        this.lastReading.emit(lastReading);
+        this.lastReadingObj = lastReading;
       },
       error => console.error(error)
     );

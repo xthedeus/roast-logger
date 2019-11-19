@@ -8,6 +8,8 @@ import threading
 import sys
 import trace
 import time
+import random
+
 from tinydb import TinyDB, Query, where
 
 app = Flask(__name__)
@@ -51,10 +53,13 @@ class thread_with_trace(threading.Thread):
 def data_gather(log_id):
     timestep = 0
     # data_gather will run for 30 minutes max
+    last_bt = 0
+    last_et = 0
     while timestep <= 1800:
         now = int(time.time())
-        db.insert({'id': log_id, 'time': now, 'et': (
-            timestep+10)*2, 'bt': (timestep+25)*2})
+        last_bt = last_bt + random.randint(0, 5)
+        last_et = last_et + random.randint(0, 3)
+        db.insert({'id': log_id, 'time': now, 'et': last_et, 'bt': last_bt})
         timestep = timestep + 5
         time.sleep(5)
 
