@@ -21,8 +21,8 @@
 <div class="row mt-4" *ngIf="isUrlSaved && !loggingId">
     <div class="col-md-4"></div>
     <div class="col-md-4">
-        <button mdbBtn type="button" color="elegant" mdbWavesEffect class="full-width m-0" size="sm"
-            (click)="startLog()">Start logging</button>
+        <button mdbBtn type="button" color="elegant" mdbWavesEffect class="full-width m-0" (click)="startLog()">Start
+            logging</button>
     </div>
     <div class="col-md-4"></div>
 </div>
@@ -64,13 +64,13 @@
             </mdb-card-body>
         </mdb-card>
         <div class="mt-4">
-            <button mdbBtn type="button" color="brown" mdbWavesEffect class="full-width m-0" size="sm"
-                (click)="stopLog()" *ngIf="!isLoggingStopping() && !isLoggingStopped()">Stop
+            <button mdbBtn type="button" color="brown" mdbWavesEffect class="full-width m-0" (click)="stopLog()"
+                *ngIf="!isLoggingStopping() && !isLoggingStopped()">Stop
                 logging</button>
-            <button mdbBtn type="button" color="dark-green" mdbWavesEffect class="full-width m-0" size="sm"
-                (click)="stopLog()" *ngIf="isLoggingStopped()">Start
+            <button mdbBtn type="button" color="dark-green" mdbWavesEffect class="full-width m-0" (click)="resumeLog()"
+                *ngIf="isLoggingStopped()">Resume
                 logging</button>
-            <button mdbBtn type="button" color="brown" mdbWavesEffect class="full-width m-0" size="sm" disabled
+            <button mdbBtn type="button" color="brown" mdbWavesEffect class="full-width m-0" disabled
                 *ngIf="isLoggingStopping()">
                 <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
                 Stopping...

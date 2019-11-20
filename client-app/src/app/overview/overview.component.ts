@@ -37,6 +37,7 @@ export class OverviewComponent implements OnInit {
   getCurrentBT() { return 0; }
   getCurrentET() { return 0; }
   stopLog(): void { }
+  resumeLog(): void { }
   isLoggingStopping(): boolean { return false; }
   isLoggingStopped(): boolean { return false; }
 
@@ -56,6 +57,12 @@ export class OverviewComponent implements OnInit {
         setTimeout(() => this.stopLog = () => {
           this.logger.stopLog();
           clearInterval(this.elapsedInterval);
+        }, 0);
+        setTimeout(() => this.resumeLog = () => {
+          this.logger.resumeLogging();
+          this.elapsedInterval = setInterval(() => {
+            this.elapsedTime = this.logger.getElapsedTime();
+          }, 1000);
         }, 0);
         setTimeout(() => this.isLoggingStopped = () => {
           return (this.logger.isLoggingStopped && this.logger.intervalId == null);

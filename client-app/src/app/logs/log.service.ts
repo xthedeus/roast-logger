@@ -34,10 +34,20 @@ export class LogService {
   }
 
   stopLog(baseUrl: string, id: number): Observable<any> {
-    const url = `${baseUrl}/logs/${id}`;
+    const url = `${baseUrl}/logs/${id}/stop`;
     return this.http.post<any>(url, {}).pipe(
       tap((data: any) => {
         console.log('stopLog: ', data);
+      }),
+      catchError(this.handleError)
+    );
+  }
+
+  resumeLogging(baseUrl: string, id: number): Observable<any> {
+    const url = `${baseUrl}/logs/${id}/resume`;
+    return this.http.post<any>(url, {}).pipe(
+      tap((data: any) => {
+        console.log('resumeLogging: ', data);
       }),
       catchError(this.handleError)
     );

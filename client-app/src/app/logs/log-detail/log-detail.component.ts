@@ -48,11 +48,16 @@ export class LogDetailComponent implements OnInit {
   ngOnInit() {
     this.startTime = new Date().getTime();
     this.logChartOptions = this.getBaseChart();
+    this.startLogging();
+  }
+
+  startLogging(): void {
     this.getLog();
 
     this.timerId = setInterval(() => {
       let timeLeft = this.pollingInterval - (new Date().getTime() - this.lastReadingTime);
-      if (timeLeft < 100) this.nextReadingTimer.emit(this.pollingInterval)
+      if (timeLeft < 1000 && timeLeft >= 100) this.nextReadingTimer.emit(0)
+      else if (timeLeft < 100) this.nextReadingTimer.emit(this.pollingInterval)
       else this.nextReadingTimer.emit(timeLeft)
     }, 500);
 
@@ -70,6 +75,14 @@ export class LogDetailComponent implements OnInit {
       }
       this.getLog();
     }, this.pollingInterval);
+  }
+
+  resumeLogging(): void {
+    this.isLoading = true;
+    this.logService.resumeLogging(this.baseUrl, this.logId).pipe(finalize(() => this.isLoading = false)).subscribe(
+      data => this.startLogging(),
+      error => console.error(error)
+    );
   }
 
   ngOnDestroy() {

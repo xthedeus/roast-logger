@@ -62,10 +62,14 @@ def data_gather(log_id):
         db.insert({'id': log_id, 'time': now, 'et': last_et, 'bt': last_bt})
         timestep = timestep + 5
         time.sleep(5)
+    # remove logging_entries that is still existing
+    logging_entry = get_logging_entry(log_id)
+    if logging_entry is not None:
+        remove_logging_entry(log_id)
 
 
 @app.route('/status', methods=['GET'])
-def status():
+def get_status():
     data = {'status': True}
     js = json.dumps(data)
     resp = Response(js, status=200, mimetype='application/json')
@@ -73,36 +77,75 @@ def status():
 
 
 @app.route('/logs', methods=['POST'])
-def log():
+def start_log():
     if request.method == 'POST':
         global log_count
-        global logging_entries
         log_count = log_count + 1
-        x = thread_with_trace(target=data_gather, args=(log_count,))
-        logging_entries.append({'log_id': log_count, 'thread': x})
-        x.start()
+        start_logging(log_count)
         data = {'id': log_count}
         js = json.dumps(data)
         resp = Response(js, status=200, mimetype='application/json')
         return resp
 
 
-@app.route('/logs/<id>', methods=['GET', 'POST'])
-def log_id(id):
+@app.route('/logs/<id>/stop', methods=['POST'])
+def stop_log_by_id(id):
+    if request.method == 'POST':
+        id = int(id)
+        logging_entry = get_logging_entry(id)
+        if logging_entry is not None:
+            t = logging_entry['thread']
+            t.kill()
+            remove_logging_entry(id)
+            resp = Response({}, status=200, mimetype='application/json')
+            return resp
+        else:
+            resp = Response({}, status=400, mimetype='application/json')
+            return resp
+
+
+@app.route('/logs/<id>/resume', methods=['POST'])
+def resume_log_by_id(id):
+    if request.method == 'POST':
+        id = int(id)
+        logging_entry = get_logging_entry(id)
+        if logging_entry is None:
+            start_logging(id)
+            resp = Response({}, status=200, mimetype='application/json')
+            return resp
+        else:
+            return Response({}, status=400, mimetype='application/json')
+
+
+@app.route('/logs/<id>', methods=['GET'])
+def get_log_by_id(id):
     if request.method == 'GET':
         data = db.search(where('id') == int(id))
         js = json.dumps(data)
         resp = Response(js, status=200, mimetype='application/json')
         return resp
 
-    if request.method == 'POST':
-        global logging_entries
-        for logging_entry in logging_entries:
-            if logging_entry['log_id'] == int(id):
-                t = logging_entry['thread']
-                t.kill()
-        resp = Response({}, status=200, mimetype='application/json')
-        return resp
+
+def start_logging(log_id):
+    global logging_entries
+    x = thread_with_trace(target=data_gather, args=(log_id,))
+    logging_entries.append({'log_id': log_id, 'thread': x})
+    x.start()
+
+
+def remove_logging_entry(log_id):
+    global logging_entries
+    for logging_entry in logging_entries:
+        if logging_entry['log_id'] == int(log_id):
+            logging_entries.remove(logging_entry)
+
+
+def get_logging_entry(log_id):
+    global logging_entries
+    for logging_entry in logging_entries:
+        if logging_entry['log_id'] == int(log_id):
+            return logging_entry
+    return None
 
 
 if __name__ == '__main__':
