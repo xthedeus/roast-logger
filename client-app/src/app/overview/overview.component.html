@@ -1,85 +1,56 @@
-<div class="row mt-4" *ngIf="!isUrlSaved">
-    <div class="col-md-4"></div>
-    <div class="col-md-4">
-        <div class="md-form">
-            <input mdbInput type="text" id="form1" class="form-control" [(ngModel)]="serverUrl">
-            <label for="form1" class="">Logger IP</label>
-            <button mdbBtn type="button" color="elegant" mdbWavesEffect class="full-width m-0" size="sm"
-                (click)="getServerStatus()">Next</button>
-        </div>
-
-    </div>
-    <div class="col-md-4"></div>
-</div>
-
-<div class="row mt-4" *ngIf="isUrlSaved">
-    <div class="col-lg-12">
-        <p class="text-center" (click)="isUrlSaved = false">Logger IP: {{serverUrl}}</p>
-    </div>
-</div>
-
-<div class="row mt-4" *ngIf="isUrlSaved && !loggingId">
-    <div class="col-md-4"></div>
-    <div class="col-md-4">
-        <button mdbBtn type="button" color="elegant" mdbWavesEffect class="full-width m-0" (click)="startLog()">Start
-            logging</button>
-    </div>
-    <div class="col-md-4"></div>
-</div>
-
 <div class="row mt-4">
-    <div class="col-md-3" *ngIf="loggingId">
+    <div class="col-md-3">
         <mdb-card>
             <mdb-card-body>
                 <mdb-card-title>
-                    <h4 class="m-0">Elapsed time: <span
-                            class="float-right">{{ millisToMinutesAndSeconds(elapsedTime) }}</span></h4>
+                    <h4 class="m-0">
+                        <mdb-icon fas icon="stopwatch"></mdb-icon> Elapsed time: <span class="float-right"
+                            *ngIf="elapsedTimeString">{{ elapsedTimeString }}</span>
+                    </h4>
                 </mdb-card-title>
             </mdb-card-body>
         </mdb-card>
         <mdb-card class="mt-4">
             <mdb-card-body>
                 <mdb-card-title>
-                    <h4 class="m-0">Current ET: <span class="float-right">{{getCurrentET()}} °C</span></h4>
+                    <h4 class="m-0">
+                        <mdb-icon fas icon="thermometer-half"></mdb-icon> Current Temp: <span
+                            class="float-right">{{currentBT}} °C</span>
+                    </h4>
+                    <small *ngIf="logStarted">Last reading: {{lastReadingSeconds}} second(s) ago</small>
                 </mdb-card-title>
             </mdb-card-body>
         </mdb-card>
         <mdb-card class="mt-4">
             <mdb-card-body>
-                <mdb-card-title>
-                    <h4 class="m-0">Current BT: <span class="float-right">{{getCurrentBT()}} °C</span></h4>
-                </mdb-card-title>
-            </mdb-card-body>
-        </mdb-card>
-        <mdb-card class="mt-4">
-            <mdb-card-body>
-                <mdb-card-title>
-                    <p>Next update:</p>
-                    <div class="progress">
-                        <div id="nextReading" class="progress-bar" role="progressbar"
-                            [attr.aria-valuenow]="pollingInterval" aria-valuemin="0"
-                            [attr.aria-valuemax]="pollingInterval" [style.width]="nextReadingTimePercentage+'%'"></div>
-                    </div>
-                </mdb-card-title>
+                <p class="mb-0">Exception log:</p>
+                <small *ngIf="exceptions.length == 0">None</small>
+                <p class="m-0 p-0" *ngFor="let ex of exceptions">
+                    <small>- {{ ex.method }} at {{ getTimeString(ex.time) }}</small>
+                </p>
             </mdb-card-body>
         </mdb-card>
         <div class="mt-4">
-            <button mdbBtn type="button" color="brown" mdbWavesEffect class="full-width m-0" (click)="stopLog()"
-                *ngIf="!isLoggingStopping() && !isLoggingStopped()">Stop
-                logging</button>
-            <button mdbBtn type="button" color="dark-green" mdbWavesEffect class="full-width m-0" (click)="resumeLog()"
-                *ngIf="isLoggingStopped()">Resume
-                logging</button>
-            <button mdbBtn type="button" color="brown" mdbWavesEffect class="full-width m-0" disabled
-                *ngIf="isLoggingStopping()">
-                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                Stopping...
+            <button mdbBtn type="button" color="red" mdbWavesEffect class="full-width m-0 mt-1" (click)="resetLog()"
+                *ngIf="(logStarted || loggingStopped) && !isReset">
+                <mdb-icon fas icon="undo" class="pr-1"></mdb-icon> Reset
+            </button>
+            <button mdbBtn type="button" color="grey" mdbWavesEffect class="full-width m-0 mt-1" (click)="stopLog()"
+                *ngIf="logStarted && !loggingStopped">
+                <mdb-icon fas icon="stop" class="pr-1"></mdb-icon> Stop
+            </button>
+            <button mdbBtn type="button" color="dark-green" mdbWavesEffect class="full-width m-0 mt-1"
+                (click)="startLog()" *ngIf="!logStarted && isReset">
+                <mdb-icon fas icon="play" class="pr-1"></mdb-icon> Start
+            </button>
+            <button mdbBtn type="button" color="default" mdbWavesEffect class="full-width m-0 mt-1" (click)="startLog()"
+                *ngIf="!logStarted && loggingStopped && !isReset">
+                <mdb-icon fas icon="save" class="pr-1"></mdb-icon> Save
             </button>
         </div>
 
     </div>
-    <div class="col-md-9" *ngIf="loggingId">
-        <app-log-detail [baseUrl]="baseUrl" [logId]="loggingId" [pollingInterval]="pollingInterval"
-            (lastReading)='onLastReading($event)' (nextReadingTimer)='onNextReadingTimer($event)'></app-log-detail>
+    <div class="col-md-9" *ngIf="showGraph">
+        <app-log-detail [baseUrl]="baseUrl"></app-log-detail>
     </div>
 </div>

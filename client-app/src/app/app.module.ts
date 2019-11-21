@@ -8,8 +8,11 @@ import { LogsComponent } from './logs/logs.component';
 import { LogDetailComponent } from './logs/log-detail/log-detail.component';
 import { HttpClientModule } from '@angular/common/http';
 import { HighchartsChartModule } from 'highcharts-angular';
-import { MDBBootstrapModule } from 'angular-bootstrap-md';
 import { FormsModule } from '@angular/forms';
+
+import { ButtonsModule, WavesModule, CardsModule, IconsModule } from 'angular-bootstrap-md'
+import { LogService } from './logs/log.service';
+
 
 @NgModule({
   declarations: [
@@ -24,9 +27,12 @@ import { FormsModule } from '@angular/forms';
     FormsModule,
     HttpClientModule,
     HighchartsChartModule,
-    MDBBootstrapModule.forRoot()
+    ButtonsModule.forRoot(),
+    WavesModule.forRoot(),
+    CardsModule.forRoot(),
+    IconsModule
   ],
-  providers: [],
+  providers: [LogService],
   bootstrap: [AppComponent]
 })
 export class AppModule { }

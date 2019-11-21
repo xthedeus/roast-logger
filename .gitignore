@@ -105,3 +105,4 @@ venv.bak/
 
 # database files
 db.json
+node_modules

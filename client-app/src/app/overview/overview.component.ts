@@ -19,61 +19,98 @@ export class OverviewComponent implements OnInit {
   isUrlSaved: boolean;
   loggingId: number;
 
+  logStarted: boolean;
+
   currentBT: number;
   currentET: number;
-
-  pollingInterval = 5500;
 
   nextReadingTimePercentage: number;
 
   elapsedInterval: any;
   elapsedTime: number;
+  elapsedTimeString: string;
+
+  lastReadingInterval: any;
+  lastReadingTime: number;
+  lastReadingSeconds: number;
+
+  loggingStopped: boolean;
+
+  isReset: boolean;
+
+  exceptions: any[];
+
+  showGraph: boolean;
 
   constructor(private logService: LogService) { }
 
   ngOnInit() {
+    this.elapsedTimeString = "00:00";
+    this.currentBT = 0;
+    this.exceptions = [];
+    this.startSubscribers();
+    this.isReset = true;
   }
 
-  getCurrentBT() { return 0; }
-  getCurrentET() { return 0; }
-  stopLog(): void { }
-  resumeLog(): void { }
-  isLoggingStopping(): boolean { return false; }
-  isLoggingStopped(): boolean { return false; }
+  getElapsedTimeString(): void {
+    let ms = this.logger.getElapsedTime();
+    this.elapsedTimeString = new Date(ms / 1000 * 1000).toISOString().substr(14, 5);
+  }
+
+  getTimeString(ms: number): string {
+    return new Date(ms * 1000).toLocaleString();
+  }
+
+  startSubscribers(): void {
+    this.logService
+      .getLogs()
+      .subscribe((message: any) => {
+        this.currentBT = message.data.temp;
+        this.lastReadingTime = new Date().getTime();
+        this.lastReadingSeconds = 0;
+      });
+
+    this.logService
+      .getExceptions()
+      .subscribe((message: any) => {
+        this.exceptions.push(message.data);
+      });
+
+    this.lastReadingInterval = setInterval(() => {
+      if (this.lastReadingTime) {
+        let ms = new Date().getTime() - this.lastReadingTime;
+        this.lastReadingSeconds = Math.floor(ms / 1000);
+      }
+    }, 200);
+  }
 
   startLog(): void {
+    this.loggingStopped = false;
+    this.showGraph = true;
+    this.logStarted = true;
+
+    setTimeout(() => {
+      this.logger.startLogging();
+    }, 0);
 
     this.elapsedInterval = setInterval(() => {
-      this.elapsedTime = this.logger.getElapsedTime();
+      this.getElapsedTimeString();
     }, 1000);
+  }
 
-    this.isLoading = true;
-    this.logService.startLog(this.baseUrl).pipe(finalize(() => this.isLoading = false)).subscribe(
-      data => {
-        //this.router.navigate(['logs', data.id]);
-        this.loggingId = data.id;
-        setTimeout(() => this.getCurrentBT = () => this.logger.lastReadingObj.bt, 0);
-        setTimeout(() => this.getCurrentET = () => this.logger.lastReadingObj.et, 0);
-        setTimeout(() => this.stopLog = () => {
-          this.logger.stopLog();
-          clearInterval(this.elapsedInterval);
-        }, 0);
-        setTimeout(() => this.resumeLog = () => {
-          this.logger.resumeLogging();
-          this.elapsedInterval = setInterval(() => {
-            this.elapsedTime = this.logger.getElapsedTime();
-          }, 1000);
-        }, 0);
-        setTimeout(() => this.isLoggingStopped = () => {
-          return (this.logger.isLoggingStopped && this.logger.intervalId == null);
-        }, 0);
+  stopLog(): void {
+    this.logger.stopLogging();
+    this.loggingStopped = true;
+    this.logStarted = false;
+    this.isReset = false;
 
-        setTimeout(() => this.isLoggingStopping = () => {
-          return (!this.logger.isLoggingStopped && this.logger.intervalId == null) || this.logger.shouldStopLogging;
-        }, 0);
-      },
-      error => console.error(error)
-    );
+    clearInterval(this.elapsedInterval);
+  }
+
+  resetLog(): void {
+    this.logger.resetLog();
+    this.elapsedTimeString = "00:00";
+    this.isReset = true;
   }
 
   getServerStatus(): void {
@@ -100,20 +137,10 @@ export class OverviewComponent implements OnInit {
       );
   }
 
-  onLastReading(lastReading): void {
-    this.currentBT = lastReading.bt;
-    this.currentET = lastReading.et;
-  }
-
-  onNextReadingTimer(nextReadingTime): void {
-    this.nextReadingTimePercentage = nextReadingTime / this.pollingInterval * 100;
-  }
-
   millisToMinutesAndSeconds(millis): string {
-    if (millis == null) return "0:00";
-    var minutes = Math.floor(millis / 60000);
-    var seconds = ((millis % 60000) / 1000).toFixed(0);
-    return minutes + ":" + (parseInt(seconds) < 10 ? '0' : '') + seconds;
+    if (millis == null) return "00:00";
+    var ms = millis;
+    return new Date(ms / 1000 * 1000).toISOString().substr(14, 5);
   }
 
 }

@@ -40,91 +40,94 @@ export class LogDetailComponent implements OnInit {
 
   intervalId: any;
   timerId: any;
+  statusId: any;
+
+  thread_running: boolean;
 
   startTime: number;
+
+  loggingStopped: boolean;
+
+  btData: any[] = [];
+
+  lastTempReading: number;
+
+  tempThreshold = 5;
+
+  firstLog: boolean;
 
   constructor(private logService: LogService) { }
 
   ngOnInit() {
-    this.startTime = new Date().getTime();
+    this.firstLog = true;
     this.logChartOptions = this.getBaseChart();
-    this.startLogging();
+    this.startSubscriber();
   }
 
   startLogging(): void {
-    this.getLog();
-
-    this.timerId = setInterval(() => {
-      let timeLeft = this.pollingInterval - (new Date().getTime() - this.lastReadingTime);
-      if (timeLeft < 1000 && timeLeft >= 100) this.nextReadingTimer.emit(0)
-      else if (timeLeft < 100) this.nextReadingTimer.emit(this.pollingInterval)
-      else this.nextReadingTimer.emit(timeLeft)
-    }, 500);
-
-    this.intervalId = setInterval(() => {
-      if (this.shouldStopLogging) {
-        this.shouldStopLogging = false;
-        clearInterval(this.intervalId);
-        clearInterval(this.timerId);
-        this.timerId = null;
-        this.intervalId = null;
-        setTimeout(() => {
-          this.getLog();
-          this.isLoggingStopped = true;
-        }, this.pollingInterval);
-      }
-      this.getLog();
-    }, this.pollingInterval);
+    this.startTime = new Date().getTime();
+    this.firstLog = null;
+    this.lastTempReading = null;
+    this.loggingStopped = false;
   }
 
-  resumeLogging(): void {
-    this.isLoading = true;
-    this.logService.resumeLogging(this.baseUrl, this.logId).pipe(finalize(() => this.isLoading = false)).subscribe(
-      data => this.startLogging(),
-      error => console.error(error)
-    );
+  startSubscriber(): void {
+    this.logService
+      .getLogs()
+      .subscribe((message: any) => {
+        if (this.firstLog) {
+          this.startTime = new Date().getTime();
+          this.firstLog = false;
+        }
+        if (!this.loggingStopped) {
+          let newTemp = message.data.temp;
+          if (!this.lastTempReading) this.lastTempReading = newTemp;
+
+          if (newTemp + this.tempThreshold > this.lastTempReading && message.data.temp - this.tempThreshold < this.lastTempReading) {
+
+            var firstTime;
+
+            if (this.btData.length == 0) firstTime = message.data.time;
+            else firstTime = this.btData[0].time;
+
+            let entry = {
+              temp: message.data.temp,
+              time: message.data.time,
+              timeString: this.getTimeBetweenString(message.data.time, firstTime)
+            };
+
+            this.btData.push(entry);
+
+            this.logChartOptions.series[0].data = this.btData.map(x => [x.timeString, x.temp]);
+            this.updateFlag = true;
+          }
+          this.lastTempReading = newTemp;
+        }
+      });
   }
 
-  ngOnDestroy() {
-    if (this.intervalId) {
-      clearInterval(this.intervalId);
-    }
+  getTimeBetweenString(t1: number, t2: number): string {
+    return new Date((t1 * 1000 - t2 * 1000) / 1000 * 1000).toISOString().substr(14, 5);
+  }
+
+  stopLogging(): void {
+    this.loggingStopped = true;
+  }
+
+  resumeLog(): void {
+    this.loggingStopped = false;
+  }
+
+  resetLog(): void {
+    this.btData = [];
+    this.logChartOptions.series[0].data = [];
+    this.updateFlag = true;
+    this.firstLog = true;
+    this.startTime = new Date().getTime();
   }
 
   getElapsedTime(): number {
     return new Date().getTime() - this.startTime;
-  }
-
-  getLog(): void {
-    this.isLoading = true;
-    this.logService.getLog(this.baseUrl, this.logId).pipe(finalize(() => this.isLoading = false)).subscribe(
-      data => {
-        this.lastReadingTime = new Date().getTime();
-        this.reloadGraph(data);
-        let lastReading = data[data.length - 1];
-        this.lastReading.emit(lastReading);
-        this.lastReadingObj = lastReading;
-      },
-      error => console.error(error)
-    );
-  }
-
-  stopLog(): void {
-    this.isLoading = true;
-    this.logService.stopLog(this.baseUrl, this.logId).pipe(finalize(() => this.isLoading = false)).subscribe(
-      data => {
-        console.log(data);
-        this.shouldStopLogging = true;
-      },
-      error => console.error(error)
-    );
-  }
-
-  reloadGraph(data): void {
-    this.logChartOptions.series[0].data = data.map(l => [new Date(l.time * 1000).getTime(), l.bt]);
-    this.logChartOptions.series[1].data = data.map(l => [new Date(l.time * 1000).getTime(), l.et]);
-
-    this.updateFlag = true;
   }
 
   private getBaseChart(): any {
@@ -136,7 +139,7 @@ export class LogDetailComponent implements OnInit {
         zoomType: 'x'
       },
       xAxis: {
-        type: 'datetime'
+        type: "category"
       },
       yAxis: {
         title: {
@@ -145,15 +148,17 @@ export class LogDetailComponent implements OnInit {
       }, legend: {
         enabled: false
       },
+      plotOptions: {
+        series: {
+          marker: {
+            enabled: false
+          }
+        }
+      },
       series: [{
         type: 'line',
         name: "BT",
         color: "#F44336",
-        data: []
-      }, {
-        type: 'line',
-        name: "ET",
-        color: "#2196F3",
         data: []
       }]
 

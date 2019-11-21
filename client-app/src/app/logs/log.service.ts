@@ -4,20 +4,35 @@ import { catchError, map, tap } from 'rxjs/operators';
 import { HttpErrorResponse, HttpClient } from '@angular/common/http';
 import { environment } from 'src/environments/environment';
 
+import * as io from 'socket.io-client';
+
 @Injectable({
   providedIn: 'root'
 })
 export class LogService {
 
-  private apiUrl = environment.apiUrl;
+  private socket;
+  private url = 'http://192.168.1.165:8080';
 
-  constructor(private http: HttpClient) { }
+  constructor(private http: HttpClient) {
+    this.socket = io(this.url);
+  }
 
   getLog(baseUrl: string, id: number): Observable<any> {
     const url = `${baseUrl}/logs/${id}`;
     return this.http.get<any>(url).pipe(
       tap((data: any) => {
         console.log('getLog: ', data);
+      }),
+      catchError(this.handleError)
+    );
+  }
+
+  getLogStatus(baseUrl: string, id: number): Observable<any> {
+    const url = `${baseUrl}/logs/${id}/status`;
+    return this.http.get<any>(url).pipe(
+      tap((data: any) => {
+        console.log('getLogStatus: ', data);
       }),
       catchError(this.handleError)
     );
@@ -61,6 +76,22 @@ export class LogService {
       }),
       catchError(this.handleError)
     );
+  }
+
+  public getLogs = () => {
+    return Observable.create((observer) => {
+      this.socket.on('new-temp', (message) => {
+        observer.next(message);
+      });
+    });
+  }
+
+  public getExceptions = () => {
+    return Observable.create((observer) => {
+      this.socket.on('exception', (message) => {
+        observer.next(message);
+      });
+    });
   }
 
   private handleError(err: HttpErrorResponse) {
