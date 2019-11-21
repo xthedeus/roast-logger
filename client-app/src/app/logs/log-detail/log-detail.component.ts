@@ -44,15 +44,13 @@ export class LogDetailComponent implements OnInit {
 
   thread_running: boolean;
 
-  startTime: number;
-
   loggingStopped: boolean;
 
   btData: any[] = [];
 
   lastTempReading: number;
 
-  tempThreshold = 5;
+  tempThreshold = 2.5;
 
   firstLog: boolean;
 
@@ -65,7 +63,6 @@ export class LogDetailComponent implements OnInit {
   }
 
   startLogging(): void {
-    this.startTime = new Date().getTime();
     this.firstLog = null;
     this.lastTempReading = null;
     this.loggingStopped = false;
@@ -76,7 +73,6 @@ export class LogDetailComponent implements OnInit {
       .getLogs()
       .subscribe((message: any) => {
         if (this.firstLog) {
-          this.startTime = new Date().getTime();
           this.firstLog = false;
         }
         if (!this.loggingStopped) {
@@ -91,7 +87,7 @@ export class LogDetailComponent implements OnInit {
             else firstTime = this.btData[0].time;
 
             let entry = {
-              temp: message.data.temp,
+              temp: Math.round(message.data.temp),
               time: message.data.time,
               timeString: this.getTimeBetweenString(message.data.time, firstTime)
             };
@@ -123,11 +119,6 @@ export class LogDetailComponent implements OnInit {
     this.logChartOptions.series[0].data = [];
     this.updateFlag = true;
     this.firstLog = true;
-    this.startTime = new Date().getTime();
-  }
-
-  getElapsedTime(): number {
-    return new Date().getTime() - this.startTime;
   }
 
   private getBaseChart(): any {
@@ -156,7 +147,7 @@ export class LogDetailComponent implements OnInit {
         }
       },
       series: [{
-        type: 'line',
+        type: 'spline',
         name: "BT",
         color: "#F44336",
         data: []

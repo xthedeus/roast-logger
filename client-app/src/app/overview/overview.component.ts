@@ -30,7 +30,6 @@ export class OverviewComponent implements OnInit {
   elapsedTime: number;
   elapsedTimeString: string;
 
-  lastReadingInterval: any;
   lastReadingTime: number;
   lastReadingSeconds: number;
 
@@ -42,23 +41,67 @@ export class OverviewComponent implements OnInit {
 
   showGraph: boolean;
 
+  coolThreshold: number;
+  mediumThreshold: number;
+  hotThreshold: number;
+
+  err7cdString: string;
+  err7cdTime: number;
+
+  targetTemp: number;
+
+  startTime: number;
+
+  intervalBool: boolean;
+
   constructor(private logService: LogService) { }
 
   ngOnInit() {
+    this.loggingStopped = true;
     this.elapsedTimeString = "00:00";
+    this.err7cdString = "13:30";
     this.currentBT = 0;
     this.exceptions = [];
     this.startSubscribers();
     this.isReset = true;
+
+    this.coolThreshold = 100;
+    this.mediumThreshold = 160;
+    this.hotThreshold = 1000;
+
+    this.targetTemp = 170;
+
+    this.err7cdTime = (((13 * 60) + 30) * 1000) + 1000; // 13 minutes and 30 seconds
   }
 
-  getElapsedTimeString(): void {
-    let ms = this.logger.getElapsedTime();
-    this.elapsedTimeString = new Date(ms / 1000 * 1000).toISOString().substr(14, 5);
+  async interval(): Promise<void> {
+    while (this.intervalBool) {
+      this.elapsedTimeString = this.getElapsedTimeString();
+      this.err7cdString = this.getErr7TimeString();
+      this.lastReadingSeconds = this.getLastReadingSeconds();
+      await this.delay(1000);
+    }
+  }
+
+  getElapsedTimeString(): string {
+    if (this.loggingStopped) return "00:00";
+    let ms = this.getElapsedTime();
+    return new Date(ms / 1000 * 1000).toISOString().substr(14, 5);
+  }
+
+  getErr7TimeString(): string {
+    if (this.loggingStopped) return "13:30";
+    let ms = this.err7cdTime - this.getElapsedTime();
+    if (ms <= 0) return "00:00";
+    return new Date(ms / 1000 * 1000).toISOString().substr(14, 5);
   }
 
   getTimeString(ms: number): string {
     return new Date(ms * 1000).toLocaleString();
+  }
+
+  async delay(ms: number) {
+    await new Promise(resolve => setTimeout(() => resolve(), ms)).then();
   }
 
   startSubscribers(): void {
@@ -67,7 +110,6 @@ export class OverviewComponent implements OnInit {
       .subscribe((message: any) => {
         this.currentBT = message.data.temp;
         this.lastReadingTime = new Date().getTime();
-        this.lastReadingSeconds = 0;
       });
 
     this.logService
@@ -75,16 +117,23 @@ export class OverviewComponent implements OnInit {
       .subscribe((message: any) => {
         this.exceptions.push(message.data);
       });
+  }
 
-    this.lastReadingInterval = setInterval(() => {
-      if (this.lastReadingTime) {
-        let ms = new Date().getTime() - this.lastReadingTime;
-        this.lastReadingSeconds = Math.floor(ms / 1000);
-      }
-    }, 200);
+  getLastReadingSeconds(): number {
+    if (this.lastReadingTime) {
+      let ms = new Date().getTime() - this.lastReadingTime;
+      return Math.floor(ms / 1000);
+    }
+  }
+
+  getElapsedTime(): number {
+    return new Date().getTime() - this.startTime;
   }
 
   startLog(): void {
+    this.intervalBool = true;
+    this.interval();
+    this.startTime = new Date().getTime();
     this.loggingStopped = false;
     this.showGraph = true;
     this.logStarted = true;
@@ -94,11 +143,13 @@ export class OverviewComponent implements OnInit {
     }, 0);
 
     this.elapsedInterval = setInterval(() => {
-      this.getElapsedTimeString();
+      this.elapsedTimeString = this.getElapsedTimeString();
+      this.err7cdString = this.getErr7TimeString();
     }, 1000);
   }
 
   stopLog(): void {
+    this.intervalBool = false;
     this.logger.stopLogging();
     this.loggingStopped = true;
     this.logStarted = false;
@@ -110,6 +161,7 @@ export class OverviewComponent implements OnInit {
   resetLog(): void {
     this.logger.resetLog();
     this.elapsedTimeString = "00:00";
+    this.err7cdString = "13:30";
     this.isReset = true;
   }
 

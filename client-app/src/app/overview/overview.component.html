@@ -1,56 +1,105 @@
-<div class="row mt-4">
+<div class="row">
     <div class="col-md-3">
+        <mdb-card class="primary-color white-text box-height">
+            <mdb-card-body>
+                <mdb-card-title>
+                    <div class="row">
+                        <div class="col-sm pr-0">
+                            <h6 class="m-0 pt-1">
+                                <mdb-icon fas icon="stopwatch"></mdb-icon> Elapsed time:
+                            </h6>
+                        </div>
+                        <div class="col-sm pl-0">
+                            <h4 class="m-0">
+                                <span class="float-right" *ngIf="elapsedTimeString">{{ elapsedTimeString }}</span>
+                            </h4>
+                        </div>
+                    </div>
+                </mdb-card-title>
+            </mdb-card-body>
+        </mdb-card>
+    </div>
+
+    <div class="col-md-3">
+        <mdb-card class="box-height">
+            <mdb-card-body [class.info-color]="currentBT <= coolThreshold"
+                [class.warning-color-dark]="currentBT <= mediumThreshold && currentBT > coolThreshold"
+                [class.danger-color-dark]="currentBT <= hotThreshold && currentBT > mediumThreshold" class="white-text">
+                <mdb-card-title>
+                    <div class="row">
+                        <div class="col-sm pr-0">
+                            <h6 class="m-0 pt-1">
+                                <mdb-icon fas icon="thermometer-half"></mdb-icon> Current Temp:
+                            </h6>
+                        </div>
+                        <div class="col-sm pl-0">
+                            <h4 class="m-0">
+                                <span class="float-right">{{ currentBT }} °C</span>
+                            </h4>
+                        </div>
+                    </div>
+                </mdb-card-title>
+            </mdb-card-body>
+        </mdb-card>
+    </div>
+
+    <div class="col-md-3">
+        <mdb-card class="rgba-teal-strong white-text box-height">
+            <mdb-card-body>
+                <mdb-card-title>
+                    <div class="row">
+                        <div class="col-sm pr-0">
+                            <h6 class="m-0 pt-1">
+                                <mdb-icon fas icon="stopwatch"></mdb-icon> Err7 CD:
+                            </h6>
+                        </div>
+                        <div class="col-sm pl-0">
+                            <h4 class="m-0">
+                                <span class="float-right" *ngIf="err7cdString">{{ err7cdString }}</span>
+                            </h4>
+                        </div>
+                    </div>
+                </mdb-card-title>
+            </mdb-card-body>
+        </mdb-card>
+    </div>
+
+    <div class="col-md-3">
+        <button mdbBtn type="button" color="red" mdbWavesEffect class="full-width m-0 mt-1" (click)="resetLog()"
+            *ngIf="(logStarted || loggingStopped) && !isReset">
+            <mdb-icon fas icon="undo" class="pr-1"></mdb-icon> Reset
+        </button>
+        <button mdbBtn type="button" color="grey" mdbWavesEffect class="full-width m-0 mt-1" (click)="stopLog()"
+            *ngIf="logStarted && !loggingStopped">
+            <mdb-icon fas icon="stop" class="pr-1"></mdb-icon> Stop
+        </button>
+        <button mdbBtn type="button" color="dark-green" mdbWavesEffect class="full-width m-0 mt-1" (click)="startLog()"
+            *ngIf="!logStarted && isReset">
+            <mdb-icon fas icon="play" class="pr-1"></mdb-icon> Start
+        </button>
+        <button mdbBtn type="button" color="deep-purple" mdbWavesEffect class="full-width m-0 mt-1" (click)="startLog()"
+            *ngIf="!logStarted && loggingStopped && !isReset">
+            <mdb-icon fas icon="save" class="pr-1"></mdb-icon> Save
+        </button>
+        <small *ngIf="logStarted">Last reading: {{lastReadingSeconds}} second(s) ago</small>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-lg-12" *ngIf="showGraph">
+        <app-log-detail [baseUrl]="baseUrl"></app-log-detail>
+    </div>
+</div>
+
+<div class="row" *ngIf="exceptions.length > 0">
+    <div class="col-md-12">
         <mdb-card>
-            <mdb-card-body>
-                <mdb-card-title>
-                    <h4 class="m-0">
-                        <mdb-icon fas icon="stopwatch"></mdb-icon> Elapsed time: <span class="float-right"
-                            *ngIf="elapsedTimeString">{{ elapsedTimeString }}</span>
-                    </h4>
-                </mdb-card-title>
-            </mdb-card-body>
-        </mdb-card>
-        <mdb-card class="mt-4">
-            <mdb-card-body>
-                <mdb-card-title>
-                    <h4 class="m-0">
-                        <mdb-icon fas icon="thermometer-half"></mdb-icon> Current Temp: <span
-                            class="float-right">{{currentBT}} °C</span>
-                    </h4>
-                    <small *ngIf="logStarted">Last reading: {{lastReadingSeconds}} second(s) ago</small>
-                </mdb-card-title>
-            </mdb-card-body>
-        </mdb-card>
-        <mdb-card class="mt-4">
-            <mdb-card-body>
+            <mdb-card-body class="rgba-blue-grey-slight">
                 <p class="mb-0">Exception log:</p>
-                <small *ngIf="exceptions.length == 0">None</small>
                 <p class="m-0 p-0" *ngFor="let ex of exceptions">
                     <small>- {{ ex.method }} at {{ getTimeString(ex.time) }}</small>
                 </p>
             </mdb-card-body>
         </mdb-card>
-        <div class="mt-4">
-            <button mdbBtn type="button" color="red" mdbWavesEffect class="full-width m-0 mt-1" (click)="resetLog()"
-                *ngIf="(logStarted || loggingStopped) && !isReset">
-                <mdb-icon fas icon="undo" class="pr-1"></mdb-icon> Reset
-            </button>
-            <button mdbBtn type="button" color="grey" mdbWavesEffect class="full-width m-0 mt-1" (click)="stopLog()"
-                *ngIf="logStarted && !loggingStopped">
-                <mdb-icon fas icon="stop" class="pr-1"></mdb-icon> Stop
-            </button>
-            <button mdbBtn type="button" color="dark-green" mdbWavesEffect class="full-width m-0 mt-1"
-                (click)="startLog()" *ngIf="!logStarted && isReset">
-                <mdb-icon fas icon="play" class="pr-1"></mdb-icon> Start
-            </button>
-            <button mdbBtn type="button" color="default" mdbWavesEffect class="full-width m-0 mt-1" (click)="startLog()"
-                *ngIf="!logStarted && loggingStopped && !isReset">
-                <mdb-icon fas icon="save" class="pr-1"></mdb-icon> Save
-            </button>
-        </div>
-
-    </div>
-    <div class="col-md-9" *ngIf="showGraph">
-        <app-log-detail [baseUrl]="baseUrl"></app-log-detail>
     </div>
 </div>
