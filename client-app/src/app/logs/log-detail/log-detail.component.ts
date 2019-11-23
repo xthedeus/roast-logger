@@ -18,7 +18,7 @@ export class LogDetailComponent implements OnInit {
   logId: number;
 
   @Input()
-  pollingInterval: number;
+  logs: any[];
 
   isLoading: boolean;
 
@@ -34,7 +34,7 @@ export class LogDetailComponent implements OnInit {
 
   Highcharts = Highcharts;
   chartConstructor = "chart";
-  oneToOneFlag = true;
+  oneToOneFlag = false;
   logChartOptions: any;
   updateFlag: boolean;
 
@@ -50,28 +50,61 @@ export class LogDetailComponent implements OnInit {
 
   lastTempReading: number;
 
-  tempThreshold = 2.5;
+  tempThreshold = 3.5;
 
   firstLog: boolean;
+
+  firstLogTime: number;
+  predefinedFirstLogTime: number;
+
+  logI: number;
 
   constructor(private logService: LogService) { }
 
   ngOnInit() {
+    this.loggingStopped = true;
     this.firstLog = true;
     this.logChartOptions = this.getBaseChart();
     this.startSubscriber();
+    this.loadPredefinedLogs();
+  }
+
+  loadPredefinedLogs(): void {
+    if (!this.logs) return;
+
+    let formattedLogs = [];
+    this.predefinedFirstLogTime = this.logs.reduce((min, p) => p.time < min.time ? p : min, this.logs[0]).time;
+
+    this.logs.forEach(log => {
+      let entry = {
+        temp: Math.round(log.temp),
+        time: log.time - this.predefinedFirstLogTime
+      };
+      formattedLogs.push(entry);
+    });
+
+    this.logChartOptions.series[1].data = formattedLogs.map(x => [x.time, x.temp]);
+    this.updateFlag = true;
   }
 
   startLogging(): void {
+    this.logI = 0;
     this.firstLog = null;
     this.lastTempReading = null;
     this.loggingStopped = false;
   }
 
+  saveLog(): void {
+    this.logService.sendLogs(this.btData.map(x => {
+      return { temp: x.temp, time: x.orgTime };
+    }));
+  }
+
   startSubscriber(): void {
     this.logService
-      .getLogs()
+      .getNewTemp()
       .subscribe((message: any) => {
+        if (this.loggingStopped) return;
         if (this.firstLog) {
           this.firstLog = false;
         }
@@ -80,24 +113,24 @@ export class LogDetailComponent implements OnInit {
           if (!this.lastTempReading) this.lastTempReading = newTemp;
 
           if (newTemp + this.tempThreshold > this.lastTempReading && message.data.temp - this.tempThreshold < this.lastTempReading) {
+            if (this.logI % 2 == 0) {
 
-            var firstTime;
+              if (this.btData.length == 0) this.firstLogTime = message.data.time;
 
-            if (this.btData.length == 0) firstTime = message.data.time;
-            else firstTime = this.btData[0].time;
+              let entry = {
+                temp: message.data.temp,
+                time: message.data.time - this.firstLogTime,
+                orgTime: message.data.time
+              };
 
-            let entry = {
-              temp: Math.round(message.data.temp),
-              time: message.data.time,
-              timeString: this.getTimeBetweenString(message.data.time, firstTime)
-            };
+              this.btData.push(entry);
 
-            this.btData.push(entry);
-
-            this.logChartOptions.series[0].data = this.btData.map(x => [x.timeString, x.temp]);
-            this.updateFlag = true;
+              this.logChartOptions.series[0].data = this.btData.map(x => [x.time, x.temp]);
+              this.updateFlag = true;
+            }
           }
           this.lastTempReading = newTemp;
+          this.logI++;
         }
       });
   }
@@ -130,7 +163,12 @@ export class LogDetailComponent implements OnInit {
         zoomType: 'x'
       },
       xAxis: {
-        type: "category"
+        type: "category",
+        labels: {
+          formatter: (l) => {
+            return this.getTimeBetweenString(l.value, 0);
+          },
+        }
       },
       yAxis: {
         title: {
@@ -150,7 +188,14 @@ export class LogDetailComponent implements OnInit {
         type: 'spline',
         name: "BT",
         color: "#F44336",
-        data: []
+        data: [],
+        selected: true
+      }, {
+        type: 'spline',
+        name: "BT",
+        color: "#2196F3",
+        data: [],
+        opacity: 0.5
       }]
 
     };

@@ -54,6 +54,12 @@ export class OverviewComponent implements OnInit {
 
   intervalBool: boolean;
 
+  showLogsFlag: boolean;
+
+  logs: any[];
+  selectedLogs: any[];
+  allLogs: any[]
+
   constructor(private logService: LogService) { }
 
   ngOnInit() {
@@ -104,12 +110,53 @@ export class OverviewComponent implements OnInit {
     await new Promise(resolve => setTimeout(() => resolve(), ms)).then();
   }
 
+  private getFirstLog(data: any[]) {
+    return data.reduce((min, p) => p.time < min.time ? p : min, data[0]);
+  }
+
+  private getLastLog(data: any[]) {
+    return data.reduce((max, p) => p.time > max.time ? p : max, data[0]);
+  }
+
   startSubscribers(): void {
     this.logService
-      .getLogs()
+      .getNewTemp()
       .subscribe((message: any) => {
         this.currentBT = message.data.temp;
         this.lastReadingTime = new Date().getTime();
+      });
+
+    this.logService
+      .getAllLogs()
+      .subscribe((message: any) => {
+        this.logs = [];
+        let logs = message.logs;
+        let ids = [...new Set(logs.map(x => x.id))];
+        ids.forEach(id => {
+          let idLogs = logs.filter(x => x.id == id);
+          let firstLog = this.getFirstLog(idLogs);
+          let lastLog = this.getLastLog(idLogs);
+
+          let firstTime = new Date(firstLog.time * 1000);
+          let lastTime = new Date(lastLog.time * 1000);
+
+          let duration = lastTime.getTime() - firstTime.getTime();
+
+          let entry = {
+            id: id,
+            startTime: new Date(firstLog.time * 1000),
+            endTime: new Date(lastLog.time * 1000),
+            duration: duration
+          };
+          this.logs.push(entry);
+        });
+        this.allLogs = logs;
+      });
+
+    this.logService
+      .getLogCreated()
+      .subscribe((message: any) => {
+        alert(`Saved log: ${message.log_id}`);
       });
 
     this.logService
@@ -148,6 +195,16 @@ export class OverviewComponent implements OnInit {
     }, 1000);
   }
 
+  showLogs(): void {
+    this.showLogsFlag = !this.showLogsFlag;
+  }
+
+  selectLog(id: number): void {
+    this.selectedLogs = this.allLogs.filter(x => x.id == id);
+    this.showLogsFlag = false;
+    this.showGraph = true;
+  }
+
   stopLog(): void {
     this.intervalBool = false;
     this.logger.stopLogging();
@@ -165,28 +222,8 @@ export class OverviewComponent implements OnInit {
     this.isReset = true;
   }
 
-  getServerStatus(): void {
-    this.isLoading = true;
-    let url = this.serverUrl;
-    if (url.substring(url.length - 1) == "/") {
-      url = url.substring(0, url.length - 1);
-    }
-
-    var charCode = url.charCodeAt(0);
-    if (charCode >= 48 && charCode <= 57) {
-      url = `http://${url}`;
-    }
-
-    this.baseUrl = url;
-
-    this.logService.getStatus(url)
-      .pipe(finalize(() => this.isLoading = false))
-      .subscribe(
-        data => {
-          this.isUrlSaved = true;
-        },
-        error => console.log(error)
-      );
+  saveLog(): void {
+    this.logger.saveLog();
   }
 
   millisToMinutesAndSeconds(millis): string {

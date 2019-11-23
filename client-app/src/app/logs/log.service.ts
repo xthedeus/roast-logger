@@ -12,73 +12,25 @@ import * as io from 'socket.io-client';
 export class LogService {
 
   private socket;
-  private url = 'http://192.168.1.165:8080';
+  private url = 'http://192.168.1.165:5000';
 
   constructor(private http: HttpClient) {
     this.socket = io(this.url);
   }
 
-  getLog(baseUrl: string, id: number): Observable<any> {
-    const url = `${baseUrl}/logs/${id}`;
-    return this.http.get<any>(url).pipe(
-      tap((data: any) => {
-        console.log('getLog: ', data);
-      }),
-      catchError(this.handleError)
-    );
+  sendLogs(logs: any[]) {
+    this.socket.emit("create-logs", JSON.stringify(logs));
   }
 
-  getLogStatus(baseUrl: string, id: number): Observable<any> {
-    const url = `${baseUrl}/logs/${id}/status`;
-    return this.http.get<any>(url).pipe(
-      tap((data: any) => {
-        console.log('getLogStatus: ', data);
-      }),
-      catchError(this.handleError)
-    );
+  getAllLogs = () => {
+    return Observable.create((observer) => {
+      this.socket.on('all-logs', (message) => {
+        observer.next(message);
+      });
+    });
   }
 
-  startLog(baseUrl: string): Observable<any> {
-    const url = `${baseUrl}/logs`;
-    return this.http.post<any>(url, {}).pipe(
-      tap((data: any) => {
-        console.log('startLog: ', data);
-      }),
-      catchError(this.handleError)
-    );
-  }
-
-  stopLog(baseUrl: string, id: number): Observable<any> {
-    const url = `${baseUrl}/logs/${id}/stop`;
-    return this.http.post<any>(url, {}).pipe(
-      tap((data: any) => {
-        console.log('stopLog: ', data);
-      }),
-      catchError(this.handleError)
-    );
-  }
-
-  resumeLogging(baseUrl: string, id: number): Observable<any> {
-    const url = `${baseUrl}/logs/${id}/resume`;
-    return this.http.post<any>(url, {}).pipe(
-      tap((data: any) => {
-        console.log('resumeLogging: ', data);
-      }),
-      catchError(this.handleError)
-    );
-  }
-
-  getStatus(baseUrl: string): Observable<any> {
-    const url = `${baseUrl}/status`;
-    return this.http.get<any>(url).pipe(
-      tap((data: any) => {
-        console.log('stopLog: ', data);
-      }),
-      catchError(this.handleError)
-    );
-  }
-
-  public getLogs = () => {
+  getNewTemp = () => {
     return Observable.create((observer) => {
       this.socket.on('new-temp', (message) => {
         observer.next(message);
@@ -86,7 +38,7 @@ export class LogService {
     });
   }
 
-  public getExceptions = () => {
+  getExceptions = () => {
     return Observable.create((observer) => {
       this.socket.on('exception', (message) => {
         observer.next(message);
@@ -94,14 +46,11 @@ export class LogService {
     });
   }
 
-  private handleError(err: HttpErrorResponse) {
-    let errorMessage = '';
-    if (err.error instanceof ErrorEvent) {
-      errorMessage = `An error occurred: ${err.error.message}`;
-    } else {
-      errorMessage = `${err.error.message}`;
-    }
-    console.error(errorMessage, err);
-    return throwError(errorMessage);
+  getLogCreated = () => {
+    return Observable.create((observer) => {
+      this.socket.on('log-created', (message) => {
+        observer.next(message);
+      });
+    });
   }
 }

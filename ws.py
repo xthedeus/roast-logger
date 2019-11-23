@@ -1,6 +1,9 @@
-import asyncio
-import socketio
-from aiohttp import web
+from flask import Flask, render_template, session, request, \
+    copy_current_request_context, json
+from flask_socketio import SocketIO, emit, join_room, leave_room, \
+    close_room, rooms, disconnect
+
+from threading import Lock
 
 import board
 import busio
@@ -9,59 +12,100 @@ import adafruit_max31855
 
 import threading
 import time
+import sys
+import trace
 
-from flask import Flask
-from flask import request
-from flask import Response
-from flask import json
-from flask_cors import CORS
+from tinydb import TinyDB, Query, where
 
 spi = busio.SPI(board.SCK, MOSI=board.MOSI, MISO=board.MISO)
 cs = digitalio.DigitalInOut(board.D5)
 max31855 = adafruit_max31855.MAX31855(spi, cs)
 
+TinyDB.DEFAULT_TABLE_KWARGS = {'cache_size': 0}
+db = TinyDB('db.json')
 
-sio = socketio.AsyncServer(async_mode='aiohttp', cors_allowed_origins='*')
-app = web.Application()
-sio.attach(app)
+async_mode = "eventlet"
 
-# max31855.temperature
+app = Flask(__name__)
+socketio = SocketIO(app, async_mode=async_mode, cors_allowed_origins='*')
+
+thread = None
+thread_lock = Lock()
 
 
-async def background_task():
+class Log:
+    def __init__(self, temp, time, log_id):
+        self.temp = temp
+        self.time = time
+        self.id = log_id
+
+    def to_JSON(self):
+        return json.loads(json.dumps(self, default=lambda o: o.__dict__))
+
+
+def get_temp():
+    temp = None
+    while temp is None:
+        try:
+            t = max31855.temperature
+            if t is not None:
+                temp = t
+                return temp
+        except Exception as err:
+            socketio.emit('exception', {
+                          'data': {'method': 'get_temp', 'time': now, 'exception': str(err)}})
+            print(f"Exception: {err}")
+            socketio.sleep(0.1)
+
+
+def background_task():
     while True:
         try:
-            temp = max31855.temperature
+            temp = get_temp()
             now = int(time.time())
             if temp is not None:
-                await sio.emit('new-temp', {'data': {'time': now, 'temp': temp}})
+                socketio.emit(
+                    'new-temp', {'data': {'time': now, 'temp': temp}})
         except Exception as err:
-            await sio.emit('exception', {'data': {'method': 'background_task', 'time': now, 'exception': err}})
+            socketio.emit('exception', {
+                          'data': {'method': 'background_task', 'time': now, 'exception': str(err)}})
             print(f"Exception: {err}")
-        await sio.sleep(2)
+        socketio.sleep(2)
 
 
-@sio.event
-async def my_event(sid, data):
-    pass
+@socketio.on('create-logs')
+def create_logs(data):
+    logs = db.all()
+    log_count = 0
+    for log in logs:
+        if log['id'] > log_count:
+            log_count = log['id']
+    js = json.loads(data)
+    log_count = log_count + 1
+    log_id = log_count
+    logs = [Log(x["temp"], x["time"], log_id) for x in js]
+    for val in logs:
+        db.insert(val.to_JSON())
+    socketio.emit('log-created', {'log_id': log_id})
+    all_logs = db.all()
+    socketio.emit('all-logs', {'logs': all_logs})
 
 
-@sio.on('test')
-async def another_event(sid, data):
-    pass
+@socketio.on('connect')
+def connect():
+    global thread
+    print('client connected')
+    with thread_lock:
+        if thread is None:
+            thread = socketio.start_background_task(background_task)
+    logs = db.all()
+    socketio.emit('all-logs', {'logs': logs})
 
 
-@sio.event
-async def connect(sid, environ):
-    print('connect ', sid)
-
-
-@sio.event
-def disconnect(sid):
-    print('disconnect ', sid)
+@socketio.on('disconnect')
+def disconnect():
+    print('client disconnected')
 
 
 if __name__ == '__main__':
-    sio.start_background_task(background_task)
-    web.run_app(app)
-    #input("Press Enter to stop the socket...")
+    socketio.run(app, host='0.0.0.0', port=5000)

@@ -65,29 +65,57 @@
     </div>
 
     <div class="col-md-3">
-        <button mdbBtn type="button" color="red" mdbWavesEffect class="full-width m-0 mt-1" (click)="resetLog()"
+        <button mdbBtn type="button" color="red" mdbWavesEffect class="full-width m-0" (click)="resetLog()"
             *ngIf="(logStarted || loggingStopped) && !isReset">
             <mdb-icon fas icon="undo" class="pr-1"></mdb-icon> Reset
         </button>
-        <button mdbBtn type="button" color="grey" mdbWavesEffect class="full-width m-0 mt-1" (click)="stopLog()"
+        <button mdbBtn type="button" color="grey" mdbWavesEffect class="full-width m-0" (click)="stopLog()"
             *ngIf="logStarted && !loggingStopped">
             <mdb-icon fas icon="stop" class="pr-1"></mdb-icon> Stop
         </button>
-        <button mdbBtn type="button" color="dark-green" mdbWavesEffect class="full-width m-0 mt-1" (click)="startLog()"
+        <button mdbBtn type="button" color="dark-green" mdbWavesEffect class="full-width m-0" (click)="startLog()"
             *ngIf="!logStarted && isReset">
-            <mdb-icon fas icon="play" class="pr-1"></mdb-icon> Start
+            <mdb-icon fas icon="coffee" class="pr-1"></mdb-icon> Start
         </button>
-        <button mdbBtn type="button" color="deep-purple" mdbWavesEffect class="full-width m-0 mt-1" (click)="startLog()"
+        <button mdbBtn type="button" color="brown" mdbWavesEffect class="full-width m-0 mt-1" (click)="showLogs()"
+            *ngIf="!logStarted && isReset">
+            <mdb-icon fas icon="chart-line" class="pr-1"></mdb-icon> Load
+        </button>
+        <button mdbBtn type="button" color="deep-purple" mdbWavesEffect class="full-width m-0 mt-1" (click)="saveLog()"
             *ngIf="!logStarted && loggingStopped && !isReset">
             <mdb-icon fas icon="save" class="pr-1"></mdb-icon> Save
         </button>
-        <small *ngIf="logStarted">Last reading: {{lastReadingSeconds}} second(s) ago</small>
+    </div>
+</div>
+
+<div class="row mt-4" *ngIf="showLogsFlag">
+    <div class="col-lg-12">
+        <div class="list-group">
+            <div *ngFor="let log of logs">
+                <a (click)="selectLog(log.id)"
+                    class="list-group-item list-group-item-action flex-column align-items-start">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h5 class="mb-1">Log: {{ log.id }}</h5>
+                        <small class="text-muted">{{ log.startTime | date:'dd.MM.yyyy HH:mm' }}</small>
+                    </div>
+                    <small class="text-muted">Start time:
+                        <strong>{{ log.startTime | date:'dd.MM.yyyy HH:mm' }}</strong></small>
+                    <br>
+                    <small class="text-muted">End time:
+                        <strong>{{ log.endTime | date:'dd.MM.yyyy HH:mm' }}</strong></small>
+                    <br>
+                    <small class="text-muted">Duration:
+                        <strong>{{millisToMinutesAndSeconds(log.duration)}}</strong></small>
+                </a>
+            </div>
+        </div>
     </div>
 </div>
 
 <div class="row mt-4">
     <div class="col-lg-12" *ngIf="showGraph">
-        <app-log-detail [baseUrl]="baseUrl"></app-log-detail>
+        <small *ngIf="logStarted">Last reading: {{lastReadingSeconds}} second(s) ago</small>
+        <app-log-detail [logs]="selectedLogs"></app-log-detail>
     </div>
 </div>
 
