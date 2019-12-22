@@ -125,7 +125,7 @@
             <mdb-card-body class="rgba-blue-grey-slight">
                 <p class="mb-0">Exception log:</p>
                 <p class="m-0 p-0" *ngFor="let ex of exceptions">
-                    <small>- {{ ex.method }} at {{ getTimeString(ex.time) }}</small>
+                    <small>- {{ ex.method }} at {{ getTimeString(ex.time) }} | details: {{ ex.exception }}</small>
                 </p>
             </mdb-card-body>
         </mdb-card>
