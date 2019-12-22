@@ -1,8 +1,7 @@
 import { Component, OnInit, ViewChild } from '@angular/core';
-import { Router } from '@angular/router';
 import { LogService } from '../logs/log.service';
-import { finalize } from 'rxjs/operators';
 import { LogDetailComponent } from '../logs/log-detail/log-detail.component';
+import Speech from 'speak-tts'
 
 @Component({
   selector: 'app-overview',
@@ -60,9 +59,31 @@ export class OverviewComponent implements OnInit {
   selectedLogs: any[];
   allLogs: any[]
 
+  err7AlarmPlayed: boolean;
+
+  tempMarks: number[];
+  tempMarksPlayed: number[];
+
+  speech = new Speech();
+
   constructor(private logService: LogService) { }
 
   ngOnInit() {
+    this.speech.init({
+      'volume': 1,
+      'lang': 'en-GB',
+      'rate': 1,
+      'pitch': 1,
+      'voice': 'Google UK English Male',
+      'splitSentences': true
+    }).then((data) => {
+      // The "data" object contains the list of available voices and the voice synthesis params
+      console.log("Speech is ready, voices are available", data)
+    }).catch(e => {
+      console.error("An error occured while initializing : ", e)
+    })
+
+    this.tempMarks = [100, 160, 170];
     this.loggingStopped = true;
     this.elapsedTimeString = "00:00";
     this.err7cdString = "13:30";
@@ -74,8 +95,6 @@ export class OverviewComponent implements OnInit {
     this.coolThreshold = 100;
     this.mediumThreshold = 160;
     this.hotThreshold = 1000;
-
-    this.targetTemp = 170;
 
     this.err7cdTime = (((13 * 60) + 30) * 1000) + 1000; // 13 minutes and 30 seconds
   }
@@ -99,6 +118,12 @@ export class OverviewComponent implements OnInit {
     if (this.loggingStopped) return "13:30";
     let ms = this.err7cdTime - this.getElapsedTime();
     if (ms <= 0) return "00:00";
+    if (ms < 30000 && !this.err7AlarmPlayed) {
+      this.speech.speak({
+        text: `Warning! Error 7 hitting in ${Math.round(ms / 1000)} seconds!`,
+      });
+      this.err7AlarmPlayed = true;
+    }
     return new Date(ms / 1000 * 1000).toISOString().substr(14, 5);
   }
 
@@ -118,10 +143,24 @@ export class OverviewComponent implements OnInit {
     return data.reduce((max, p) => p.time > max.time ? p : max, data[0]);
   }
 
+  private validateNewTemp(temp: number): void {
+    if (!this.logStarted) return;
+    this.tempMarks.forEach(t => {
+      if (this.tempMarksPlayed.some(tmp => tmp == t)) return;
+      if (this.currentBT >= t && temp >= t) {
+        this.speech.speak({
+          text: `Temperature reached ${Math.floor(temp)} degrees!`,
+        });
+        this.tempMarksPlayed.push(t);
+      }
+    });
+  }
+
   startSubscribers(): void {
     this.logService
       .getNewTemp()
       .subscribe((message: any) => {
+        this.validateNewTemp(message.data.temp);
         this.currentBT = message.data.temp;
         this.lastReadingTime = new Date().getTime();
       });
@@ -163,6 +202,9 @@ export class OverviewComponent implements OnInit {
       .getExceptions()
       .subscribe((message: any) => {
         this.exceptions.push(message.data);
+        this.speech.speak({
+          text: `Got exception: ${message.data.exception}`,
+        });
       });
   }
 
@@ -178,6 +220,11 @@ export class OverviewComponent implements OnInit {
   }
 
   startLog(): void {
+    this.speech.speak({
+      text: `Logging started! Enjoy the roasting`,
+    });
+    this.tempMarksPlayed = [];
+    this.err7AlarmPlayed = false;
     this.intervalBool = true;
     this.interval();
     this.startTime = new Date().getTime();
