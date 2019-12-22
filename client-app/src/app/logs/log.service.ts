@@ -12,7 +12,7 @@ import * as io from 'socket.io-client';
 export class LogService {
 
   private socket;
-  private url = 'http://192.168.1.165:5000';
+  private url = 'http://192.168.1.14:5000';
 
   constructor(private http: HttpClient) {
     this.socket = io(this.url);
